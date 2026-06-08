@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Macro 2do Parcial — Flashcards</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161922;
+    --surface2: #1e2230;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e8eaf0;
+    --muted: #7a7f94;
+    --accent-vf: #4ade80;
+    --accent-mc: #60a5fa;
+    --accent-ex: #f59e0b;
+    --correct: #4ade80;
+    --wrong: #f87171;
+    --card-w: 680px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 60px;
+  }
+
+  /* Header */
+  header {
+    width: 100%;
+    max-width: var(--card-w);
+    margin-bottom: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    font-weight: 400;
+    letter-spacing: -0.3px;
+  }
+  header p { font-size: 13px; color: var(--muted); }
+
+  /* Tab bar */
+  .tabs {
+    width: 100%;
+    max-width: var(--card-w);
+    display: flex;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+  .tab {
+    flex: 1;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    font-family: 'Sora', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.18s ease;
+  }
+  .tab .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .tab.active { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+  .tab[data-tab="vf"].active .dot { background: var(--accent-vf); }
+  .tab[data-tab="mc"].active .dot { background: var(--accent-mc); }
+  .tab[data-tab="ex"].active .dot { background: var(--accent-ex); }
+
+  /* Progress bar */
+  .progress-wrap {
+    width: 100%;
+    max-width: var(--card-w);
+    margin-bottom: 20px;
+  }
+  .progress-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .progress-top strong { color: var(--text); font-weight: 600; }
+  .progress-bar {
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.35s ease;
+  }
+  .vf-mode .progress-fill { background: var(--accent-vf); }
+  .mc-mode .progress-fill { background: var(--accent-mc); }
+  .ex-mode .progress-fill { background: var(--accent-ex); }
+
+  /* Score badges */
+  .score-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+    width: 100%;
+    max-width: var(--card-w);
+  }
+  .badge {
+    padding: 5px 12px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .badge-correct { background: rgba(74,222,128,0.12); color: var(--correct); }
+  .badge-wrong   { background: rgba(248,113,113,0.12); color: var(--wrong); }
+  .badge-skip    { background: rgba(255,255,255,0.06); color: var(--muted); }
+
+  /* Flashcard */
+  .card-area {
+    width: 100%;
+    max-width: var(--card-w);
+    perspective: 1200px;
+    margin-bottom: 20px;
+  }
+  .card-inner {
+    position: relative;
+    width: 100%;
+    min-height: 280px;
+    transform-style: preserve-3d;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .card-inner.flipped { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute;
+    width: 100%;
+    min-height: 280px;
+    backface-visibility: hidden;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+  }
+  .card-face.back {
+    transform: rotateY(180deg);
+    background: var(--surface2);
+  }
+
+  .card-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .vf-mode .card-label { color: var(--accent-vf); }
+  .mc-mode .card-label { color: var(--accent-mc); }
+  .ex-mode .card-label { color: var(--accent-ex); }
+
+  .card-question {
+    font-family: 'DM Serif Display', serif;
+    font-size: 19px;
+    font-weight: 400;
+    line-height: 1.55;
+    color: var(--text);
+    flex: 1;
+  }
+  .card-options {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .option {
+    padding: 11px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    transition: all 0.15s;
+    font-family: 'Sora', sans-serif;
+    text-align: left;
+    background: transparent;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .option:hover { border-color: var(--border2); color: var(--text); background: rgba(255,255,255,0.03); }
+  .option .opt-key {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    min-width: 18px;
+    padding-top: 1px;
+    opacity: 0.5;
+  }
+  .option.correct { border-color: rgba(74,222,128,0.5); background: rgba(74,222,128,0.08); color: var(--correct); }
+  .option.wrong   { border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.08); color: var(--wrong); }
+  .option.disabled { pointer-events: none; }
+
+  /* VF buttons */
+  .vf-btns {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .vf-btn {
+    flex: 1;
+    padding: 13px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    font-family: 'Sora', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .vf-btn.v { color: var(--correct); }
+  .vf-btn.f { color: var(--wrong); }
+  .vf-btn.v:hover { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.4); }
+  .vf-btn.f:hover { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.4); }
+  .vf-btn.selected-v { background: rgba(74,222,128,0.15); border-color: rgba(74,222,128,0.5); }
+  .vf-btn.selected-f { background: rgba(248,113,113,0.15); border-color: rgba(248,113,113,0.5); }
+  .vf-btn:disabled { pointer-events: none; opacity: 0.7; }
+
+  /* Answer reveal */
+  .answer-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    flex: 1;
+  }
+  .answer-verdict {
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .answer-verdict.correct { color: var(--correct); }
+  .answer-verdict.wrong   { color: var(--wrong); }
+  .answer-text {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #c8cad6;
+  }
+  .answer-formula {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--accent-ex);
+    line-height: 1.6;
+  }
+  .flip-hint {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: auto;
+    padding-top: 16px;
+    opacity: 0.6;
+  }
+
+  /* Controls */
+  .controls {
+    width: 100%;
+    max-width: var(--card-w);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .btn {
+    padding: 11px 22px;
+    border-radius: 10px;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { background: var(--surface2); border-color: rgba(255,255,255,0.2); }
+  .btn:disabled { opacity: 0.35; cursor: default; }
+  .btn-primary {
+    margin-left: auto;
+    background: #fff;
+    color: #000;
+    border-color: #fff;
+    font-weight: 600;
+  }
+  .btn-primary:hover { background: #e8eaf0; border-color: #e8eaf0; }
+  .btn-skip {
+    background: transparent;
+    color: var(--muted);
+    border-color: transparent;
+  }
+  .btn-skip:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+
+  /* Results screen */
+  .results {
+    width: 100%;
+    max-width: var(--card-w);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 40px 0;
+  }
+  .results.show { display: flex; }
+  .results-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    text-align: center;
+  }
+  .results-sub { color: var(--muted); font-size: 14px; text-align: center; }
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    width: 100%;
+  }
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .result-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 36px;
+  }
+  .result-label { font-size: 12px; color: var(--muted); }
+  .pct-ring {
+    width: 100px;
+    height: 100px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Macro — 2do Parcial</h1>
+  <p>Banco de preguntas completo · V/F · Multiple Choice · Ejercicios</p>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-tab="vf" onclick="switchTab('vf')">
+    <span class="dot"></span> Verdadero / Falso
+  </button>
+  <button class="tab" data-tab="mc" onclick="switchTab('mc')">
+    <span class="dot"></span> Multiple Choice
+  </button>
+  <button class="tab" data-tab="ex" onclick="switchTab('ex')">
+    <span class="dot"></span> Ejercicios
+  </button>
+</div>
+
+<div class="progress-wrap vf-mode" id="progressWrap">
+  <div class="progress-top">
+    <span>Tarjeta <strong id="cardNum">1</strong> de <strong id="cardTotal">87</strong></span>
+    <span id="pctText">0% completado</span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+</div>
+
+<div class="score-row">
+  <div class="badge badge-correct">✓ <span id="scoreCorrect">0</span> correctas</div>
+  <div class="badge badge-wrong">✗ <span id="scoreWrong">0</span> incorrectas</div>
+  <div class="badge badge-skip">→ <span id="scoreSkip">0</span> salteadas</div>
+</div>
+
+<div class="card-area" id="cardArea">
+  <div class="card-inner" id="cardInner">
+    <div class="card-face front" id="cardFront">
+      <div class="card-label" id="cardLabel">VF01</div>
+      <div class="card-question" id="cardQuestion"></div>
+      <div class="vf-btns" id="vfBtns">
+        <button class="vf-btn v" onclick="answerVF(true)">Verdadero</button>
+        <button class="vf-btn f" onclick="answerVF(false)">Falso</button>
+      </div>
+      <div class="card-options" id="mcOptions" style="display:none"></div>
+      <div id="exInputArea" style="display:none; margin-top:20px;">
+        <button class="btn btn-primary" style="width:100%; margin:0;" onclick="flipCard()">Ver respuesta</button>
+      </div>
+    </div>
+    <div class="card-face back" id="cardBack">
+      <div class="card-label" id="backLabel"></div>
+      <div class="answer-section" id="answerSection"></div>
+      <div class="flip-hint">Clic para volver · Siguiente →</div>
+    </div>
+  </div>
+</div>
+
+<div class="controls" id="mainControls">
+  <button class="btn" onclick="prevCard()" id="btnPrev" disabled>← Anterior</button>
+  <button class="btn btn-skip" onclick="skipCard()">Saltear</button>
+  <button class="btn btn-primary" onclick="nextCard()" id="btnNext">Siguiente →</button>
+</div>
+
+<div class="results" id="resultsScreen">
+  <div class="results-title">Ronda completada 🎯</div>
+  <div class="results-sub" id="resultsSub"></div>
+  <div class="results-grid">
+    <div class="result-card">
+      <div class="result-num" style="color:var(--correct)" id="rCorrect">0</div>
+      <div class="result-label">Correctas</div>
+    </div>
+    <div class="result-card">
+      <div class="result-num" style="color:var(--wrong)" id="rWrong">0</div>
+      <div class="result-label">Incorrectas</div>
+    </div>
+    <div class="result-card">
+      <div class="result-num" id="rPct">0%</div>
+      <div class="result-label">Efectividad</div>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="restartDeck()" style="padding:14px 40px; font-size:14px;">Volver a jugar</button>
+  <button class="btn" onclick="switchTab(currentTab)" style="padding:14px 40px;">Cambiar modo</button>
+</div>
+
+<script>
+// ─── DATA CORREGIDA ─────────────────────────────────────────────────────────
+
+const VF = [
+  {q:"En el mercado de trabajo, las empresas son los agentes económicos que demandan.", a:true, exp:"Las empresas son las demandantes de trabajo (contratan) y las familias son las oferentes."},
+  {q:"La curva de Phillips suele cumplirse en el corto plazo pero no en el largo plazo.", a:true, exp:"En el largo plazo, la relación inflación-desempleo desaparece y la curva se vuelve vertical (tasa natural)."},
+  {q:"Phillips encontró (de forma teórica) una relación positiva entre inflación y desempleo.", a:false, exp:"FALSO. Phillips encontró empíricamente una relación NEGATIVA (inversa): a menor desempleo, mayor inflación."},
+  {q:"Si el público decide mantener más efectivo en su poder, aumentará la Base Monetaria.", a:false, exp:"FALSO. La BM la controla el BC. Si el público pasa depósitos a efectivo, cambia la composición pero no el nivel total de la BM."},
+  {q:"El Banco Central es un organismo independiente del Poder Ejecutivo Nacional ya que tiene amplias facultades para implementar la política monetaria y cambiaria.", a:true, exp:"El BCRA tiene independencia operativa, aunque en la práctica argentina esta independencia ha sido relativa."},
+  {q:"El BCRA imprime el dinero primario mientras que los bancos comerciales imprimen el dinero secundario.", a:false, exp:"FALSO. Solo el BCRA emite billetes. Los bancos comerciales 'crean' dinero secundario mediante créditos (asiento contable), no imprimiendo billetes."},
+  {q:"La oferta agregada de largo plazo se desplaza hacia la derecha si sucede lo mismo con la frontera de posibilidades de producción.", a:true, exp:"Si la FPP se expande (más capital, tecnología, trabajo), el producto potencial sube y la OA de LP se desplaza a la derecha."},
+  {q:"Una mejora en la productividad disminuye el nivel de precios esperado y agrava la inflación.", a:false, exp:"FALSO. Una mejora en la productividad reduce costos y baja los precios esperados → COMBATE la inflación."},
+  {q:"Cuando se cruzan la curva de oferta de corto y de largo plazo estamos en presencia de un equilibrio general.", a:true, exp:"En ese cruce, mercado de bienes, trabajo y dinero están en equilibrio simultáneo."},
+  {q:"Cuando una economía establece el tipo de cambio fijo, la autoridad monetaria pierde la capacidad de controlar la oferta monetaria.", a:true, exp:"Con TC fijo, el BC debe comprar/vender divisas para mantener la paridad, lo que ajusta automáticamente la OM."},
+  {q:"Cuando una economía establece el tipo de cambio flexible, la autoridad monetaria pierde la capacidad de controlar la oferta monetaria.", a:false, exp:"FALSO. Con TC flexible el BC no defiende la paridad → conserva plena autonomía para controlar la OM."},
+  {q:"Con tipo de cambio flexible y movilidad de capitales, la política monetaria es ineficaz.", a:false, exp:"FALSO. Con TC flexible, la política monetaria ES EFICAZ. La expansión deprecia la moneda y estimula exportaciones netas."},
+  {q:"En una economía abierta con tipo de cambio fijo y sin movilidad de capitales, las políticas fiscal y monetaria son ineficaces.", a:false, exp:"FALSO. Con TC fijo y sin movilidad: la política FISCAL sí es eficaz en el corto plazo. La monetaria es ineficaz."},
+  {q:"La curva 'J' muestra la evolución del tipo de cambio a lo largo del tiempo.", a:false, exp:"FALSO. La curva J muestra la evolución de la BALANZA COMERCIAL tras una devaluación: primero empeora, luego mejora."},
+  {q:"Un aumento del tipo de cambio real aumenta el consumo de los bienes transables.", a:false, exp:"FALSO. Encarece importados → el consumo interno de transables CAE."},
+  {q:"Una suba en el tipo de cambio produce una baja en el salario real.", a:true, exp:"Si el TC sube, los precios de transables suben. Si los salarios nominales no se ajustan inmediatamente, el salario real cae."},
+  {q:"Cuando aumenta el tipo de cambio nominal, el nivel de precios de la moneda extranjera se mantiene constante y el nivel de precios de la moneda local sube: el tipo de cambio real está subiendo.", a:false, exp:"FALSO. TCR = E×P*/P. Si P (local) sube y el resto no acompaña proporcionalmente, el TCR cae (se aprecia)."},
+  {q:"El tipo de cambio real multilateral se aprecia cuando aumentan los tipos de cambio que lo componen.", a:false, exp:"FALSO. El TCR multilateral se APRECIA cuando los tipos de cambio disminuyen (la moneda local se fortalece)."},
+  {q:"Cuando el nivel de precios crece a un ritmo mayor al tipo de cambio nominal y el nivel de precios externo se mantiene constante, esto produce una apreciación en términos reales de la moneda doméstica.", a:true, exp:"TCR = E×P*/P. Si P crece más que E (y P* constante), el TCR cae → apreciación real → pérdida de competitividad."},
+  {q:"El overshooting del tipo de cambio sucede cada vez que una devaluación repentina eleva exageradamente la tasa de inflación.", a:false, exp:"FALSO. El overshooting es el ajuste INICIAL EXAGERADO del TC más allá del equilibrio de largo plazo, seguido de corrección gradual."},
+  {q:"La demanda de empleo es la variación de la población económicamente activa sobre la población económicamente activa.", a:false, exp:"FALSO. La demanda de trabajo es la cantidad de trabajadores que las empresas desean contratar a cada nivel de salario real."},
+  {q:"La demanda de trabajo es una función que vincula la cantidad de horas hombre que la economía está dispuesta a contratar para cada nivel de salario (expresado en términos reales).", a:true, exp:"Definición estándar: Ld = f(w/P), con pendiente negativa."},
+  {q:"El desempleo estructural es el desempleo que consideran los clásicos como único posible.", a:false, exp:"FALSO. Los clásicos reconocen principalmente el desempleo FRICCIONAL y el VOLUNTARIO. El estructural es una categoría más amplia."},
+  {q:"El modelo de ingreso-gasto supone que el nivel de precios y la tasa de interés son constantes.", a:true, exp:"La cruz keynesiana asume precios fijos y tasa de interés constante para simplificar el análisis de corto plazo."},
+  {q:"El gasto de los hogares aumenta si se eleva el ingreso futuro esperado pero disminuye si aumenta el ingreso presente.", a:false, exp:"FALSO. El consumo aumenta tanto con mayor ingreso presente COMO con mayor ingreso futuro esperado."},
+  {q:"El consumo de los hogares está vinculado al consumo presente, el ingreso futuro esperado y la riqueza.", a:true, exp:"La función de consumo ampliada (teoría del ciclo de vida / ingreso permanente) incluye riqueza, ingreso corriente e ingreso futuro esperado."},
+  {q:"La función Consumo depende del nivel de exportaciones.", a:false, exp:"FALSO. Depende del ingreso disponible (Yd = Y − T + TR). Las exportaciones afectan el consumo solo de manera indirecta."},
+  {q:"La inversión en el sector privado depende de la tasa de interés, tienen una relación inversa.", a:true, exp:"I = I₀ − b×i. A mayor tasa, mayor costo de financiamiento → menos inversión."},
+  {q:"La inversión neta es el gasto total en inversión que se realiza en un país en el período de un año.", a:false, exp:"FALSO. Eso es la inversión BRUTA. Inversión NETA = Inversión bruta − Depreciación."},
+  {q:"El gasto que las empresas realizan en bienes y servicios se lo denomina consumo.", a:false, exp:"FALSO. El gasto de las empresas en bienes de capital para producir se llama INVERSIÓN. Consumo es el gasto de los hogares."},
+  {q:"La función consumo debe ser paralela a la función de ahorro.", a:false, exp:"FALSO. C = C₀ + c×Yd y S = −C₀ + s×Yd tienen pendientes opuestas (c + s = 1). No son paralelas."},
+  {q:"La propensión marginal al consumo guarda una relación inversamente proporcional a la edad de los individuos.", a:true, exp:"Bajo la hipótesis del ciclo vital, los jóvenes tienen alta PMC. Con la edad, el ahorro aumenta y la PMC tiende a bajar."},
+  {q:"El modelo de tres brechas indica que un exceso de gasto público requiere una reducción del consumo de las familias para lograr el equilibrio externo.", a:false, exp:"FALSO. El equilibrio puede lograrse por otras vías, como una caída de la inversión (crowding-out) o un aumento de la recaudación tributaria, no obligatoriamente reduciendo el consumo."},
+  {q:"En el modelo de tres brechas se puede concluir que el déficit fiscal debe ser subsanado con una reducción del gasto privado o del saldo en la cuenta corriente.", a:true, exp:"S_priv + S_pub = I + BC. Un S_pub negativo se financia con mayor ahorro privado o déficit de cuenta corriente."},
+  {q:"El déficit fiscal primario es la diferencia entre el total de los recursos totales y el gasto primario.", a:false, exp:"FALSO. Esa diferencia da el 'resultado' primario. Se le llama 'déficit' únicamente cuando los gastos son MAYORES que los recursos."},
+  {q:"El déficit primario es igual al gasto, incluidos los intereses pagados, menos los impuestos recaudados, una vez descontadas las transferencias.", a:false, exp:"FALSO. El déficit PRIMARIO no incluye intereses. Los intereses se incluyen exclusivamente en el déficit FINANCIERO."},
+  {q:"El déficit fiscal es un concepto ligado a las necesidades del financiamiento de todo el sector público.", a:true, exp:"Cuando los ingresos son menores que los gastos, el Estado debe salir a financiarse (deuda, emisión, etc.)."},
+  {q:"La diferencia entre superávit primario y el superávit financiero radica en que uno incorpora el resultado del sector bancario-financiero y el otro no.", a:false, exp:"FALSO. No incorpora el resultado de los bancos, sino los INTERESES de la propia deuda pública del Estado."},
+  {q:"Según la Teoría Cuantitativa del dinero, si el público decide mantener más efectivo en su poder habrá un aumento de precios debido al incremento en la velocidad de circulación.", a:false, exp:"FALSO. Si el público retiene el efectivo, la velocidad de circulación CAE, generando presión a la baja sobre los precios, no al revés."},
+  {q:"El dinero es demandado por tres motivos: para consumir, para pagar impuestos y para ahorrar.", a:false, exp:"FALSO. Los tres motivos keynesianos son: (1) transaccional, (2) precautorio y (3) especulativo."},
+  {q:"El pasivo de un banco comercial lo constituyen los depósitos de sus clientes y se incrementa cuando aumenta la Base Monetaria.", a:false, exp:"FALSO. La BM la controla el BCRA. El pasivo de los bancos no aumenta automáticamente por cambios exógenos en la BM."},
+  {q:"El dinero de alto poder presenta hasta tres niveles de agregación según el tipo de depósito que incluya.", a:false, exp:"FALSO. El dinero de alto poder es únicamente la Base Monetaria. Los niveles de agregación (M1, M2, M3) corresponden a la Oferta Monetaria."},
+  {q:"La balanza de pagos de Argentina presenta períodos donde tanto la cuenta corriente como la cuenta capital y financiera son deficitarias.", a:true, exp:"Sí, como ocurrió en 2018-2019, provocando una masiva pérdida de reservas internacionales."},
+  {q:"La balanza de pagos de Argentina siempre fue deficitaria.", a:false, exp:"FALSO. Hubo períodos de fuerte superávit en cuenta corriente (ej. 2002-2009 tras la salida de la convertibilidad)."},
+  {q:"El saldo de la balanza de pagos muestra la evolución de las exportaciones y las importaciones.", a:false, exp:"FALSO. El saldo total de la BP muestra la variación en RESERVAS. Las X e M las muestra específicamente la Balanza Comercial."},
+  {q:"Cuando ingresan capitales del exterior para IED, esta operación se registra en la cuenta corriente de la balanza de pagos.", a:false, exp:"FALSO. La Inversión Extranjera Directa (IED) se registra en la Cuenta Capital y Financiera."},
+  {q:"Cuando una empresa de capitales extranjeros remite sus ganancias a su casa matriz, esta operación se registra en la cuenta corriente del balance de pagos.", a:true, exp:"Las remesas de utilidades son rentas del capital → van a la Cuenta Corriente, subcuenta 'Rentas de la inversión'."},
+  {q:"El efecto multiplicador hace referencia a la variación que se produce en las variables exógenas cuando se produce un shock en las variables endógenas.", a:false, exp:"FALSO. Es exactamente al revés: muestra la variación en variables ENDÓGENAS (como Y) ante un cambio en variables EXÓGENAS (como G)."},
+  {q:"Si se reduce el coeficiente de preferencia por liquidez, el BCRA debería incrementar la oferta monetaria para que no se eleve la tasa de interés y genere recesión.", a:false, exp:"FALSO. Si cae la preferencia por liquidez, la gente demanda menos dinero y la tasa BAJA. Para mantener la tasa constante, el BCRA debería REDUCIR la oferta monetaria, no aumentarla."},
+  {q:"El Presupuesto Público es un documento que contiene una proyección de la actividad del Estado, un instrumento de programación económica y social.", a:true, exp:"Definición estándar del Presupuesto Nacional."},
+  {q:"Un impuesto directo se traslada a través del sistema de precios hasta el último eslabón de la cadena de precios.", a:false, exp:"FALSO. Los impuestos directos (como Ganancias) gravan al contribuyente y no se trasladan. Los INDIRECTOS (IVA) son los que se trasladan al precio."},
+  {q:"Un impuesto indirecto se traslada a través del sistema de precios hasta el último eslabón de la cadena de precios.", a:false, exp:"FALSO (como afirmación absoluta en la facultad). Si bien tienden a trasladarse, que lleguen al 100% al último eslabón depende estrictamente de las elasticidades de la oferta y la demanda."},
+  {q:"Las retenciones se aplican sobre el precio de venta, no discriminan nivel de rentabilidad; es un impuesto regresivo.", a:false, exp:"FALSO / IMPRECISO. Aunque no discriminan rentabilidad, afectan a sectores concentrados de altos ingresos y reducen el precio interno de los alimentos, por lo que a nivel general se las considera progresivas."},
+  {q:"Los indicadores más importantes para analizar la capacidad de pago de la deuda externa son: PIB, exportaciones e ingresos públicos.", a:true, exp:"Son los tres indicadores estándar utilizados para medir la sostenibilidad de la deuda externa de un país."},
+  {q:"La deuda bruta de la administración nacional es la suma de la deuda en moneda extranjera y en moneda local.", a:true, exp:"Incluye toda la deuda pública, en pesos y en dólares, sin descontar los activos que posee el Estado (por eso es 'bruta')."},
+  {q:"La deuda pública externa es el conjunto de obligaciones que el Estado tiene con los individuos del país y del exterior.", a:false, exp:"FALSO. La deuda pública EXTERNA es exclusivamente la contraída con NO RESIDENTES. La deuda con residentes es deuda interna."},
+  {q:"La nacionalidad del acreedor es decisiva para considerar si se trata de deuda externa.", a:false, exp:"FALSO. Lo que importa económicamente es la RESIDENCIA del acreedor, no su pasaporte. Un argentino residente en el exterior que compra un bono genera deuda externa."},
+  {q:"La medida más importante para estimar la viabilidad del pago de la deuda es la deuda externa expresada a fin de año dividida por las exportaciones de ese año.", a:true, exp:"Este ratio muestra cuántos años de exportaciones se necesitan para cancelar la deuda (mide la capacidad real de generar divisas)."},
+  {q:"Los redescuentos son préstamos que otorgan los bancos comerciales a la cartera morosa.", a:false, exp:"FALSO. Los redescuentos son préstamos de última instancia que otorga el BANCO CENTRAL a los bancos comerciales por problemas de iliquidez transitoria."},
+  {q:"Las obligaciones de deuda que asume el Estado abarcan la devolución del capital como otras relativas a los intereses.", a:true, exp:"Al tomar deuda, el Estado se obliga a devolver la amortización del capital (principal) más el pago periódico de intereses."},
+  {q:"El pago de los intereses de la deuda ocasiona una redistribución de recursos dentro de la economía.", a:true, exp:"El Estado recauda de toda la población mediante impuestos para pagarle a un sector reducido (los tenedores de bonos), generando una transferencia de ingresos."},
+  {q:"La menor parte de la deuda pública argentina (junio 2018) estaba denominada en moneda extranjera.", a:false, exp:"FALSO. Históricamente y particularmente en 2018, la MAYOR parte de la deuda nacional estaba denominada en dólares y otras divisas."},
+  {q:"La deuda puede llamarse externa si se emite y paga en moneda extranjera y se pacta bajo jurisdicción extranjera.", a:true, exp:"Estas características (moneda y jurisdicción extranjera, sumadas a la residencia) son las que definen una colocación externa."},
+  {q:"La crisis de los años ochenta puso en evidencia el desfinanciamiento público en varios países de Latinoamérica y la suba de las tasas de interés internacionales derivó en default.", a:true, exp:"Conocida como la crisis de la 'década perdida', gatillada por el shock Volcker en EEUU que disparó las tasas."},
+  {q:"Tanto la crisis de 1929 como la del 2008 comenzaron en EEUU.", a:true, exp:"1929: Crack de Wall Street. 2008: Colapso de las hipotecas subprime. Ambas tuvieron epicentro en Estados Unidos."},
+  {q:"La crisis mexicana de 1994 no incidió en la economía argentina.", a:false, exp:"FALSO. El 'Efecto Tequila' afectó gravemente a Argentina, provocando fuga de depósitos y una dura recesión en 1995."},
+  {q:"La crisis de deuda externa argentina de 1982 coincidió con la crisis de América Latina.", a:true, exp:"El default mexicano en 1982 arrastró a toda la región, incluyendo a Argentina que venía de la crisis financiera de la dictadura."},
+  {q:"El blindaje y el megacanje fueron los últimos intentos para salvar el modelo de convertibilidad durante la presidencia de Raúl Alfonsín.", a:false, exp:"FALSO. Ocurrieron durante la presidencia de Fernando De la Rúa (2000-2001), como intentos desesperados por evitar el default."},
+  {q:"La tendencia a largo plazo de la deuda pública argentina en los últimos 50 años ha sido siempre creciente.", a:true, exp:"Con contadas excepciones, la dinámica estructural del Estado argentino ha sido el endeudamiento continuo."},
+  {q:"Los impuestos externos no son coparticipables.", a:true, exp:"La Constitución Nacional establece que los derechos de importación/exportación (retenciones) son de recaudación exclusiva de la Nación."},
+  {q:"Durante la década de 1990 la deuda pública se redujo.", a:false, exp:"FALSO. Durante la convertibilidad en los 90, la deuda pública aumentó agresivamente para financiar el déficit gemelo del modelo."},
+  {q:"La intervención del Estado para salvaguardar el sistema bancario durante la crisis del 2007-2008 acentuó las deudas públicas.", a:true, exp:"Los gobiernos rescataron bancos privados ('too big to fail'), socializando las pérdidas y disparando los niveles de deuda soberana global."}
+];
+
+const MC = [
+  {q:"Un aumento del impuesto a los ingresos en una economía abierta produce:", opts:["Ninguna es correcta","Un deterioro en el sector fiscal","Un aumento del multiplicador de la economía","Una reducción del nivel de equilibrio de la economía"], a:3, exp:"↑ impuestos → ↓ ingreso disponible → ↓ consumo → ↓ DA → ↓ renta de equilibrio."},
+  {q:"Si la economía enfrenta un proceso deflacionario y el resto de las variables del mercado monetario se mantienen:", opts:["Aumenta la demanda de dinero","La tasa de equilibrio del mercado bajará","Cae la demanda del dinero","La tasa de equilibrio del mercado subirá"], a:1, exp:"En deflación los precios bajan → la demanda nominal de dinero cae → con Ms constante, la tasa de interés de equilibrio BAJA."},
+  {q:"Se produce una entrada de capitales y gran parte de las divisas son compradas por el BC. ¿Qué medida implementaría para evitar la presión inflacionaria?", opts:["El BC debe comprar dólares en el mercado cambiario","El BC debe comprar deuda del Tesoro","Reducción del encaje cambiario","Emisión de letras por parte del Banco Central"], a:3, exp:"El BC debe 'esterilizar'. Al emitir letras, retira los pesos que acababa de inyectar al comprar dólares, frenando la inflación."},
+  {q:"Economía abierta con tipo de cambio flexible: si se aumenta el encaje bancario:", opts:["Deteriora el saldo de la balanza comercial","Aumenta el nivel de actividad de equilibrio","Se reduce la tasa de interés","Aumenta la recaudación fiscal"], a:0, exp:"↑ encaje → ↓ OM → ↑ tasa → entran capitales → el peso se aprecia → se encarecen exportaciones → deterioro de la balanza comercial."},
+  {q:"Si el Banco Central emite letras en pesos:", opts:["Aumenta el multiplicador monetario","Seca la plaza y aumenta la tasa de interés","Disminuye el multiplicador monetario","Cae la demanda en pesos"], a:1, exp:"El BC vende bonos → el público entrega pesos para comprarlos → retira pesos de circulación ('seca la plaza') → ↑ tasa de interés."},
+  {q:"El ministro de economía decide implementar una política para evitar el recalentamiento de la economía. La medida que aconsejaría es:", opts:["Aumentar el gasto público","Aumentar la propensión marginal a consumir","Aumentar los impuestos a los ingresos","Reducir la oferta de dinero"], a:2, exp:"Para enfriar la economía se necesita política fiscal contractiva: ↑ impuestos → ↓ ingreso disponible → se frena la demanda."},
+  {q:"El presidente del BC percibe que la economía se está enfriando. ¿Qué política puede implementar?", opts:["Un aumento del encaje bancario","Ventas de letras del Banco Central","Reducción del encaje bancario","Reducción de impuestos"], a:2, exp:"Para reactivar desde el BCRA: ↓ encaje → ↑ multiplicador bancario → ↑ OM → ↓ tasa de interés → fomenta inversión."},
+  {q:"El presidente del BC percibe que la economía se está recalentando. ¿Qué política puede implementar?", opts:["Aumentar la tasa del encaje bancario","Aumentar la oferta monetaria","Comprar bonos del Tesoro Nacional","Reducir el impuesto a los ingresos"], a:0, exp:"Política monetaria contractiva: ↑ encaje → los bancos prestan menos → ↓ OM → ↑ tasa → se encarece el crédito y frena inversión."},
+  {q:"Ante una fuerte suba de la demanda y del nivel de actividad, el presidente del BC quiere contrarrestar la situación. ¿Qué política debería implementar?", opts:["Reducción del encaje bancario","Reducción de impuestos","Aumento del encaje bancario","Aumento de impuestos"], a:2, exp:"Nuevamente, el BCRA solo tiene herramientas monetarias. Debe aplicar una política contractiva: ↑ encaje bancario."},
+  {q:"Si el Banco Central opera en el mercado cambiario vendiendo divisas:", opts:["Se expande la oferta monetaria","Aumenta la demanda de dinero","La base monetaria se mantiene","Aumenta la tasa de interés"], a:3, exp:"Al vender divisas, el BC recibe pesos a cambio y los saca de circulación → ↓ BM → ↓ OM → el dinero escasea y ↑ tasa de interés."},
+  {q:"Si el BC opera en el mercado cambiario comprando divisas:", opts:["Se produce una expansión de la base monetaria","Se produce una contracción de la oferta monetaria","Se contrae la demanda de dinero","Cambia el multiplicador de la economía"], a:0, exp:"BC compra divisas al mercado → le entrega pesos recién impresos al vendedor → ↑ inyección directa a la Base Monetaria."},
+  {q:"Si se produce una salida de capitales y gran parte de las divisas son vendidas por el BC:", opts:["La tasa de interés sube","La tasa de interés cae","El nivel de actividad sube","Aumenta el nivel de recaudaciones del Gobierno"], a:0, exp:"Misma mecánica: BC vende reservas → absorbe pesos de la economía → ↓ Oferta Monetaria → ↑ tasa de interés."},
+  {q:"Si el BC sale al mercado a comprar dólares:", opts:["La tasa de interés en pesos sube","La tasa de interés en pesos baja","Aumenta el multiplicador monetario","Disminuye el multiplicador de la economía"], a:1, exp:"BC inyecta pesos al mercado a cambio de dólares → ↑ OM → el dinero abunda → el precio del dinero (la tasa) BAJA."},
+  {q:"Si hay exceso de demanda de dinero, ¿qué medida podría encaminar el equilibrio?", opts:["Que el BC emita letras en moneda doméstica","Que el BC venda divisas en el mercado abierto","Bajar la tasa de encaje bancario","Aumentar el Gasto Público"], a:2, exp:"Ante un exceso de demanda de liquidez, hay que proveer oferta monetaria. Bajar el encaje expande la OM y cierra el bache."},
+  {q:"Si aumenta el nivel de precios y el resto de las variables del mercado monetario se mantienen:", opts:["Se expande la oferta monetaria","Se expande la demanda de dinero","La tasa de interés se mantiene","Aumenta la tasa de interés"], a:3, exp:"Al haber inflación (↑ P), se necesitan más billetes nominales para comprar lo mismo → ↑ demanda de dinero → ↑ tasa de interés."},
+  {q:"Si cae el nivel de actividad:", opts:["La oferta monetaria sube","La tasa de interés sube","La oferta monetaria baja","La tasa de interés baja"], a:3, exp:"↓ Y → ↓ demanda de dinero por motivo transaccional (la gente compra menos cosas) → con OM fija, la tasa de equilibrio BAJA."},
+  {q:"Una reducción del encaje bancario y una reducción de los impuestos produce:", opts:["Sube la tasa de interés","Baja la tasa de interés","La tasa de interés queda indeterminada","Se contrae la oferta monetaria"], a:2, exp:"Expansión monetaria (baja encaje) tira la tasa para ABAJO. Expansión fiscal (bajan impuestos) tira la tasa para ARRIBA. El efecto neto queda INDETERMINADO."},
+  {q:"Si la sensibilidad a la tasa de interés en la demanda de dinero es cero:", opts:["La función IS es vertical","La inversión se vuelve insensible a la tasa de interés","El multiplicador de la economía sube","La LM se hace vertical"], a:3, exp:"Si h=0, la demanda de dinero depende solo del ingreso (L = kY). La tasa de interés no influye, por lo que la curva LM es perfectamente VERTICAL."},
+  {q:"Cuando la sensibilidad de la inversión a la tasa de interés es cero:", opts:["Un aumento en la oferta monetaria aumenta la inversión","Un aumento en la tasa reduce la inversión","Reduce el efecto del multiplicador de la economía","Las decisiones de inversión no están vinculadas con la tasa de interés"], a:3, exp:"Si b=0 en (I = I₀ − bi), la ecuación queda solo I = I₀. La inversión es totalmente autónoma y sorda a la tasa (IS vertical)."},
+  {q:"Un país tiene una OA keynesiana y decide reducir el gasto público. Esto produce:", opts:["El nivel de precios de la economía se mantiene","Un aumento del nivel de precios","Una caída en el nivel de precios","Un aumento de la oferta monetaria"], a:0, exp:"Con OA keynesiana (totalmente horizontal en el corto plazo), los precios son rígidos. La caída de demanda solo reduce el nivel de producción (Y), manteniendo P constante."},
+  {q:"Si aumenta el nivel de actividad económica:", opts:["Aumenta el déficit comercial","Cae la recaudación de impuestos","Cae la demanda de dinero","Disminuye la tasa de interés"], a:0, exp:"Al crecer la economía (↑ Y), aumentan las importaciones. Como las exportaciones son exógenas, la Balanza Comercial empeora (↑ déficit)."},
+  {q:"Una contracción monetaria y un aumento del gasto público:", opts:["Aumenta la tasa de interés y aumenta la actividad","Aumenta la tasa de interés y el producto queda indeterminado","Baja la tasa de interés y baja el nivel de actividad","Baja la tasa de interés y sube el nivel de actividad"], a:1, exp:"Ambas medidas (IS derecha, LM izquierda) presionan fuertemente la tasa de interés al ALZA. El producto (Y) recibe fuerzas opuestas, quedando indeterminado."},
+  {q:"Si lo que recauda el tesoro es menos que el gasto planificado:", opts:["Puede solucionarse aumentando impuestos","Se debe a que la economía está creciendo","Genera presión a la deflación","Aumenta la demanda de dinero"], a:0, exp:"Esto describe un Déficit Fiscal (G > T). La solución ortodoxa es achicar el gasto o aumentar la recaudación mediante impuestos."},
+  {q:"Si se produce una caída en el consumo autónomo:", opts:["El nivel de equilibrio sube","El nivel de equilibrio cae","La tasa de interés sube","La oferta monetaria cae"], a:1, exp:"El consumo autónomo es un componente puro de la Demanda Agregada. Si cae, la DA se contrae y el producto de equilibrio (Y) CAE por el multiplicador."},
+  {q:"Una baja en la propensión marginal a ahorrar produce en la economía:", opts:["Una caída en la demanda de dinero","Un aumento en la demanda de dinero","Una reducción de la renta de equilibrio","Una caída de la tasa de interés"], a:1, exp:"Baja la PMA significa que SUBE la PMC. Un multiplicador más alto genera mayor renta (↑ Y), lo que tracciona y AUMENTA la demanda transaccional de dinero."},
+  {q:"Un aumento en el impuesto a los ingresos produce:", opts:["Un aumento en el multiplicador de la economía","Un aumento de la renta de equilibrio","Disminuye el efecto del multiplicador en la economía","Aumenta la demanda de dinero"], a:2, exp:"La alícuota impositiva 't' está en el denominador del multiplicador (k). Si 't' sube, el multiplicador se achica, restando potencia a los shocks de demanda."},
+  {q:"Si en la economía el nivel de precios domésticos aumenta y el tipo de cambio nominal se mantiene relativamente constante, esto genera:", opts:["Baja en el gasto público","Aumento del consumo autónomo","Mejora en la situación fiscal","Deterioro de la balanza comercial"], a:3, exp:"TCR = (E × P*) / P. Si P local sube y E no se mueve, el país se vuelve caro en dólares (apreciación real), lo que golpea exportaciones y atrae importaciones."},
+  {q:"Si en la economía el nivel de precios se mantiene constante y el tipo de cambio nominal está subiendo:", opts:["Aumenta el multiplicador de la economía","Una reducción en el nivel de renta de equilibrio","Cae el multiplicador de la economía","Aumento en el nivel de renta de equilibrio"], a:3, exp:"Sube E con precios fijos → devaluación real. El país se vuelve competitivo, exporta más (↑ X) e importa menos, subiendo la DA y la renta de equilibrio."},
+  {q:"Economía abierta. Si el principal mercado de colocación de bienes domésticos decide devaluar su moneda:", opts:["Aumenta el consumo autónomo","Mejora la situación fiscal","Cae la oferta monetaria","Disminuye la renta de equilibrio"], a:3, exp:"Si Brasil (por ej.) devalúa frente al dólar, los bienes brasileños se vuelven baratos y los nuestros carísimos para ellos. Exportamos menos → CAE nuestra renta."},
+  {q:"Si el principal mercado de colocación de bienes domésticos enfrenta una apreciación de su moneda:", opts:["Aumentan las exportaciones a ese mercado","Disminuyen las exportaciones a ese mercado","Aumenta el multiplicador de la economía","Cae el nivel de actividad doméstica"], a:0, exp:"Si la moneda extranjera se aprecia (se vuelve más fuerte), nuestros bienes medidos en su moneda quedan en 'oferta', lo que AUMENTA nuestras exportaciones hacia allá."},
+  {q:"En el modelo de demanda y oferta agregada, un aumento de las transferencias provocará:", opts:["A corto plazo un aumento de la DA, del nivel de actividad y de la tasa de interés","A largo plazo un aumento de la DA, de la OA y del nivel de precios","A corto plazo una reducción de la DA, de la OA y del gasto público","A largo plazo un aumento de la DA, de la OA y de la BM"], a:0, exp:"↑ Transferencias → aumenta el consumo y desplaza la DA a la derecha (IS derecha), lo que en el corto plazo reactiva la actividad económica y eleva la tasa de interés."},
+  {q:"Si se reduce el coeficiente de preferencia por liquidez, el BCRA debería:", opts:["Reducir la oferta monetaria para absorber la liquidez y evitar que caiga la tasa","Incrementar la oferta monetaria para evitar que suba la tasa de interés","Aumentar el gasto público","Vender divisas en el mercado abierto"], a:0, exp:"Si la gente quiere menos efectivo, la liquidez sobrante se va a bonos y hace desplomar la tasa. Para frenarlo, el BCRA debe sacar billetes de la calle (política contractiva)."},
+  {q:"Un signo monetario dejaría de ser curso legal cuando:", opts:["Se deprecie frente a las divisas más de un 10% mensual","No mantenga su valor o poder de compra","Algunos bienes de la economía se comercializan en dólares","No sea aceptado como cancelación de obligaciones contraídas en moneda local"], a:3, exp:"El 'curso legal' es un concepto jurídico. Se pierde exclusivamente cuando el Estado o la justicia dejan de aceptarlo como medio obligatorio de cancelación de deudas."},
+  {q:"En qué cuenta del Balance de Pagos se registran los movimientos generados por el transporte:", opts:["En la cuenta Instrumentos financieros y derivados","En la cuenta Inversión Directa","En la cuenta Renta de la inversión de la Cuenta Corriente","En la cuenta Bienes y Servicios de la Cuenta Corriente"], a:3, exp:"Los fletes, seguros y turismo se consideran 'Servicios' comerciales, formando parte de la balanza de Bienes y Servicios."},
+  {q:"En qué cuenta del Balance de Pagos se registran los fondos que envía una empresa desde su casa matriz para ampliar la planta local:", opts:["En la cuenta Inversión Directa","En la cuenta Bienes y Servicios de la Cuenta Corriente","En la cuenta Instrumentos financieros y derivados","En la cuenta Renta de la inversión de la Cuenta Corriente"], a:0, exp:"Al ser ampliación de capacidad productiva e infraestructura, entra directamente por la Cuenta Financiera como Inversión Extranjera Directa (IED)."},
+  {q:"En qué cuenta del Balance de Pagos se registran los beneficios de empresas nacionales con filiales en el exterior cuando los remiten a la casa matriz:", opts:["En la cuenta Renta de la inversión de la Cuenta Corriente","En la cuenta Instrumentos financieros y derivados","En la cuenta Inversión Directa","En la cuenta Bienes y Servicios de la Cuenta Corriente"], a:0, exp:"La repatriación de dividendos y ganancias son el 'interés' pagado por el capital productivo, va siempre a la subcuenta 'Rentas' de la Cuenta Corriente."},
+  {q:"En una economía con tipo de cambio flexible, ¿qué sucede si el BC emite letras en pesos?", opts:["Sube el tipo de cambio nominal (devaluación)","Baja el tipo de cambio nominal (apreciación)","Aumenta la demanda de dinero","Baja la demanda de dinero"], a:1, exp:"Emitir letras esteriliza pesos (los saca del mercado) → Sube la tasa de interés → Atraen dólares financieros → Abunda el dólar → el TC BAJA (el peso se aprecia)."},
+  {q:"En una economía con tipo de cambio fijo, ¿qué sucede si el BC baja el encaje bancario?", opts:["La política monetaria no tiene efectividad en la actividad","Aumenta la demanda de dinero","Aumenta el tipo de cambio","Baja el tipo de cambio"], a:0, exp:"Con TC Fijo, intentar inyectar dinero bajando encajes fracasa: la tasa local cae, los capitales huyen, el BCRA vende dólares para defender la paridad y reabsorbe todo el dinero inyectado."},
+  {q:"Con tipo de cambio fijo, un aumento de la afluencia de turismo internacional al país genera:", opts:["Apreciación de la moneda, caída de reservas y aumento de la base monetaria","Devaluación de la moneda, aumento de reservas y de la base monetaria","Ninguna de las anteriores es correcta","Mantenimiento del tipo de cambio, aumento de reservas y de la base monetaria"], a:3, exp:"Los turistas traen dólares que los bancos cambian en el BCRA. El BCRA acumula reservas (↑) e inyecta pesos (↑ BM) para evitar que el dólar caiga de su valor fijado por ley."},
+  {q:"Con tipo de cambio flexible y flotación limpia, una mejora en las expectativas que atrae inversores al país genera:", opts:["Depreciación del peso frente al dólar","Revaluación del peso frente al euro","Devaluación del peso frente al dólar","Apreciación del peso frente al dólar"], a:3, exp:"Si los inversores confían, traen sus dólares para comprar activos en pesos. Venden dólares (cae su precio) y compran pesos (el peso se APRECIA o fortalece)."},
+  {q:"En un sistema cambiario de flotación sucia el BCRA podría intervenir en el mercado de divisas cuando:", opts:["Se presenta una corrida cambiaria especulativa local","Hay una gran apreciación del peso por liquidación de exportaciones","Todas las anteriores son correctas","Ingresa una avalancha de inversiones internacionales"], a:2, exp:"La flotación administrada ('sucia') le permite al Banco Central meter mano en cualquier dirección (comprar o vender reservas) para evitar volatilidades bruscas que dañen la macroeconomía."},
+  {q:"Con tipo de cambio fijo, si se implementa una política fiscal de aumento del gasto público:", opts:["Ingresan dólares a la economía","Sube el tipo de cambio","Sube la tasa de interés de la moneda local","Baja la tasa de interés de la moneda local"], a:2, exp:"↑ G → la IS se desplaza reactivando la economía → aumenta la demanda de transacciones y con ella la demanda de dinero → Sube irremediablemente la Tasa de Interés."},
+  {q:"Si se incrementa el tipo de cambio entonces sucederá:", opts:["Una disminución de la demanda y un descenso del precio","Un aumento de la cantidad demandada y un aumento del precio en moneda local","Algunas de las opciones son correctas","Un aumento de la demanda y un aumento del precio"], a:1, exp:"Al devaluar (↑ TC), para los extranjeros el bien doméstico es una ganga, por lo que aumenta la cantidad demandada. Esto presiona a que el precio interno (en pesos) termine subiendo."},
+  {q:"¿Cuál es la Cámara de Origen para tratar el Proyecto de Presupuesto Nacional, según la CN?", opts:["Cámara de Senadores","Cámara de Diputados","Poder Ejecutivo","Auditoría General de la Nación"], a:1, exp:"Según la Constitución Nacional (Art. 52 y 75 inc. 8), todos los proyectos referidos a contribuciones e impuestos deben iniciar siempre en la Cámara de Diputados."},
+  {q:"¿Qué organismo realiza el control externo de la Cuenta de Inversión del Estado Nacional?", opts:["El Ministerio de Economía","El Banco Central","La Auditoría General de la Nación","La AFIP"], a:2, exp:"La SIGEN hace el control interno (responde al Ejecutivo). La AGN hace el control externo sobre los números finales, reportando directamente al Congreso de la Nación."},
+  {q:"Señale cuál NO constituye un factor determinante de crisis en Argentina:", opts:["Deuda pública excesiva","Déficits fiscales crónicos","Superávit fiscal primario","Contexto internacional adverso"], a:2, exp:"El superávit fiscal implica finanzas públicas sanas y es un escudo anti-crisis. Los históricos 'talones de Aquiles' argentinos son el déficit crónico y la deuda insostenible."},
+  {q:"Si se produce un déficit fiscal es porque:", opts:["La economía está creciendo","La recaudación neta es inferior al gasto público","La oferta monetaria se expandió","El tipo de cambio subió"], a:1, exp:"Es puramente contable: Déficit Fiscal existe en el período en el que las erogaciones (Gastos) del Estado superan a sus ingresos (Recaudación de impuestos)."},
+  {q:"Si se reduce la alícuota de las patentes de los vehículos, el multiplicador keynesiano:", opts:["Sube","Baja","No cambia","Queda indeterminado"], a:0, exp:"Una baja impositiva general (↓ t) achica el divisor del multiplicador [ k = 1 / (1-c(1-t)+m) ]. Matemáticamente, dividir por un número más chico da un multiplicador más GRANDE."},
+  {q:"Si disminuye la propensión marginal a importar (economía abierta):", opts:["La renta de equilibrio disminuye","La renta de equilibrio aumenta","El multiplicador cae","La balanza comercial empeora"], a:1, exp:"Menos 'm' significa que se frena el drenaje o la filtración de ingresos hacia el exterior. El multiplicador se vuelve más robusto y el nivel de renta Y final AUMENTA."}
+];
+
+const EX = [
+  {
+    q:"E1 — Inversión autónoma cae en 50\nC=275+0,9Yd | TR=100 | T=120+0,2Y | I=200 | G=500 | X=300 | M=200+0,12Y\n¿Cuánto varía el déficit fiscal?",
+    a:"Variación déficit fiscal = +25 (el déficit AUMENTA en 25)",
+    steps:[
+      "k = 1 / (1 − 0,9×(1−0,2) + 0,12) = 1 / (1 − 0,72 + 0,12) = 1 / 0,40 = 2,5",
+      "Y₁ = [275 − 0,9×(120−100) + 200 + 500 + 300 − 200] × 2,5 = 1057 × 2,5 = 2642,5",
+      "Y₂ = [1057 − 50] × 2,5 = 1007 × 2,5 = 2517,5",
+      "T₁ = 120 + 0,2×2642,5 = 648,5 → Déficit₁ = 500+100−648,5 = −48,5 (superávit)",
+      "T₂ = 120 + 0,2×2517,5 = 623,5 → Déficit₂ = 500+100−623,5 = −23,5",
+      "ΔDéficit = −23,5 − (−48,5) = +25",
+    ]
+  },
+  {
+    q:"E2 — La propensión marginal a ahorrar aumenta a 0,2\nC=300+0,9Yd | TR=100 | T=120+0,3Y | I=200 | G=500 | X=300 | M=200+0,10Y\n¿Cuánto varió el multiplicador?",
+    a:"Variación del multiplicador = 0,28 (disminuyó)",
+    steps:[
+      "k₁ (PMC=0,9): k = 1/(1 − 0,9×0,7 + 0,10) = 1/(1−0,63+0,10) = 1/0,47 ≈ 2,13",
+      "Nueva situación: PMA sube a 0,2 → PMC = 0,8",
+      "k₂ (PMC=0,8): k = 1/(1 − 0,8×0,7 + 0,10) = 1/(1−0,56+0,10) = 1/0,54 ≈ 1,85",
+      "Δk = 2,13 − 1,85 = 0,28",
+    ]
+  },
+  {
+    q:"E3 — Gasto público aumenta en 50\nC=275+0,9Yd | TR=100 | T=120+0,2Y | I=200 | G=500 | X=300 | M=200+0,12Y\n¿Cuánto varía el sector externo (balanza comercial)?",
+    a:"Balanza comercial se deteriora en −15",
+    steps:[
+      "k = 2,5 (mismo que E1)",
+      "ΔG = +50 → ΔY = 50 × 2,5 = 125",
+      "ΔM = m × ΔY = 0,12 × 125 = 15",
+      "Las exportaciones no cambian → ΔBC = 0 − 15 = −15",
+    ]
+  },
+  {
+    q:"E4 — Transferencias aumentan 50\nC=300+0,8Yd | TR=100 | T=120+0,1Y | I=200 | G=500 | X=300 | M=200+0,12Y\n¿Cuál es la situación de la balanza comercial tras el aumento de TR?",
+    a:"BC₂ = −237,20 (déficit)",
+    steps:[
+      "k = 1/(1 − 0,8×0,9 + 0,12) = 1/(1−0,72+0,12) = 1/0,40 = 2,5",
+      "Y₁ = [300 − 0,8×(120−100) + 200 + 500 + 300 − 200] × 2,5 = 1084 × 2,5 = 2710",
+      "BC₁ = 300 − (200 + 0,12×2710) = 300 − 525,2 = −225,2",
+      "ΔTR = +50 → ΔY = 0,8×50×2,5 = 100 → Y₂ = 2810",
+      "BC₂ = 300 − (200 + 0,12×2810) = 300 − 537,2 = −237,2",
+    ]
+  },
+  {
+    q:"E5 — Usando datos de E4 (C=300+0,8Yd)\n¿Cuánto varía la renta de equilibrio si las transferencias aumentan 50?",
+    a:"ΔY = +100",
+    steps:[
+      "ΔTR = +50",
+      "Impacto sobre consumo: ΔC = PMC × ΔTR = 0,8 × 50 = 40",
+      "ΔY = k × ΔC_autónomo = 2,5 × 40 = 100",
+    ]
+  },
+  {
+    q:"E6 — El Banco Central vende letras en moneda doméstica por valor de 100 (multiplicador monetario = 2,25)\n¿Cuánto varía la oferta monetaria?",
+    a:"ΔOM = −225 (cae la oferta monetaria)",
+    steps:[
+      "El BC vende letras → retira pesos de circulación",
+      "La base monetaria cae en 100",
+      "ΔOM = −100 × 2,25 = −225",
+    ]
+  },
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+
+let currentTab = 'vf';
+let decks = { vf: [], mc: [], ex: [] };
+let idx = 0;
+let answered = false;
+let scores = { correct: 0, wrong: 0, skip: 0 };
+
+function shuffle(arr) {
+  const a = [...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a;
+}
+
+function initDeck(tab) {
+  if(tab==='vf') decks.vf = shuffle(VF.map((c,i)=>({...c,id:i+1})));
+  if(tab==='mc') decks.mc = shuffle(MC.map((c,i)=>({...c,id:i+1})));
+  if(tab==='ex') decks.ex = shuffle(EX.map((c,i)=>({...c,id:i+1})));
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
+  scores = {correct:0,wrong:0,skip:0};
+  idx = 0;
+  answered = false;
+  initDeck(tab);
+  document.getElementById('resultsScreen').classList.remove('show');
+  document.getElementById('mainControls').style.display = '';
+  document.getElementById('cardArea').style.display = '';
+  document.getElementById('progressWrap').className = `progress-wrap ${tab}-mode`;
+  updateScores();
+  renderCard();
+}
+
+function getCard() { return decks[currentTab][idx]; }
+function getDeck() { return decks[currentTab]; }
+
+function renderCard() {
+  const card = getCard();
+  const deck = getDeck();
+  const total = deck.length;
+  answered = false;
+
+  // Progress
+  document.getElementById('cardNum').textContent = idx+1;
+  document.getElementById('cardTotal').textContent = total;
+  const pct = Math.round((idx/total)*100);
+  document.getElementById('pctText').textContent = pct+'% completado';
+  document.getElementById('progressFill').style.width = pct+'%';
+
+  // Reset flip
+  document.getElementById('cardInner').classList.remove('flipped');
+
+  // Label
+  const labelMap = {vf:'V / F', mc:'Multiple Choice', ex:'Ejercicio'};
+  document.getElementById('cardLabel').textContent = labelMap[currentTab] + ' — ' + (idx+1).toString().padStart(2,'0');
+  document.getElementById('backLabel').textContent = labelMap[currentTab] + ' — Respuesta';
+
+  // Question
+  document.getElementById('cardQuestion').innerHTML = card.q.replace(/\n/g,'<br>');
+
+  // Show/hide controls
+  document.getElementById('vfBtns').style.display = currentTab==='vf' ? 'flex' : 'none';
+  document.getElementById('mcOptions').style.display = currentTab==='mc' ? 'flex' : 'none';
+  document.getElementById('exInputArea').style.display = currentTab==='ex' ? 'block' : 'none';
+
+  // Reset VF buttons
+  document.querySelectorAll('.vf-btn').forEach(b=>{ b.className = b.classList.contains('v') ? 'vf-btn v' : 'vf-btn f'; b.disabled = false; });
+
+  // MC options
+  if(currentTab==='mc') {
+    const container = document.getElementById('mcOptions');
+    container.innerHTML = '';
+    card.opts.forEach((opt,i) => {
+      const keys = ['a','b','c','d'];
+      const btn = document.createElement('button');
+      btn.className = 'option';
+      btn.innerHTML = `<span class="opt-key">${keys[i]})</span> ${opt}`;
+      btn.onclick = () => answerMC(i);
+      container.appendChild(btn);
+    });
+  }
+
+  // Back - will be populated on flip
+  document.getElementById('answerSection').innerHTML = '';
+
+  // Nav buttons
+  document.getElementById('btnPrev').disabled = idx === 0;
+}
+
+function buildBack(verdict) {
+  const card = getCard();
+  const section = document.getElementById('answerSection');
+  section.innerHTML = '';
+
+  if(currentTab === 'vf') {
+    const v = document.createElement('div');
+    v.className = `answer-verdict ${verdict}`;
+    v.innerHTML = verdict==='correct' ? '✓ Correcto' : '✗ Incorrecto';
+    const correct = document.createElement('div');
+    correct.className = 'answer-text';
+    correct.innerHTML = `<strong style="color:var(--text)">Respuesta: ${card.a ? 'VERDADERO' : 'FALSO'}</strong><br><br>${card.exp}`;
+    section.appendChild(v);
+    section.appendChild(correct);
+  } else if(currentTab === 'mc') {
+    const keys = ['a','b','c','d'];
+    const v = document.createElement('div');
+    v.className = `answer-verdict ${verdict}`;
+    v.innerHTML = verdict==='correct' ? `✓ Correcto — opción ${keys[card.a]})` : `✗ Incorrecto — era ${keys[card.a]})`;
+    const exp = document.createElement('div');
+    exp.className = 'answer-text';
+    exp.innerHTML = `<strong style="color:var(--text)">${card.opts[card.a]}</strong><br><br>${card.exp}`;
+    section.appendChild(v);
+    section.appendChild(exp);
+  } else {
+    // Exercise
+    const ans = document.createElement('div');
+    ans.className = 'answer-text';
+    ans.innerHTML = `<strong style="color:var(--text)">${card.a}</strong>`;
+    section.appendChild(ans);
+    if(card.steps) {
+      const formula = document.createElement('div');
+      formula.className = 'answer-formula';
+      formula.innerHTML = card.steps.join('<br>');
+      section.appendChild(formula);
+    }
+  }
+}
+
+function answerVF(userAnswer) {
+  if(answered) return;
+  answered = true;
+  const card = getCard();
+  const correct = userAnswer === card.a;
+  if(correct) scores.correct++; else scores.wrong++;
+  updateScores();
+
+  // Style VF buttons
+  const btns = document.querySelectorAll('.vf-btn');
+  btns.forEach(b => b.disabled = true);
+  if(userAnswer) { btns[0].className = correct ? 'vf-btn v selected-v' : 'vf-btn v selected-f'; }
+  else           { btns[1].className = correct ? 'vf-btn f selected-v' : 'vf-btn f selected-f'; }
+
+  buildBack(correct ? 'correct' : 'wrong');
+  flipCard();
+}
+
+function answerMC(i) {
+  if(answered) return;
+  answered = true;
+  const card = getCard();
+  const correct = i === card.a;
+  if(correct) scores.correct++; else scores.wrong++;
+  updateScores();
+
+  // Style options
+  const opts = document.querySelectorAll('.option');
+  opts.forEach((o,j) => {
+    o.classList.add('disabled');
+    if(j === card.a) o.classList.add('correct');
+    else if(j === i && !correct) o.classList.add('wrong');
+  });
+
+  buildBack(correct ? 'correct' : 'wrong');
+  flipCard();
+}
+
+function flipCard() {
+  if(currentTab==='ex' && !answered) {
+    answered = true;
+    buildBack('');
+  }
+  const inner = document.getElementById('cardInner');
+  inner.classList.toggle('flipped');
+}
+
+function skipCard() {
+  scores.skip++;
+  updateScores();
+  nextCard();
+}
+
+function nextCard() {
+  const deck = getDeck();
+  if(idx >= deck.length - 1) {
+    showResults();
+    return;
+  }
+  idx++;
+  answered = false;
+  renderCard();
+}
+
+function prevCard() {
+  if(idx === 0) return;
+  idx--;
+  answered = false;
+  renderCard();
+}
+
+function updateScores() {
+  document.getElementById('scoreCorrect').textContent = scores.correct;
+  document.getElementById('scoreWrong').textContent = scores.wrong;
+  document.getElementById('scoreSkip').textContent = scores.skip;
+}
+
+function showResults() {
+  document.getElementById('cardArea').style.display = 'none';
+  document.getElementById('mainControls').style.display = 'none';
+  document.getElementById('progressWrap').style.display = 'none';
+  const rs = document.getElementById('resultsScreen');
+  rs.classList.add('show');
+  const total = scores.correct + scores.wrong;
+  const pct = total > 0 ? Math.round((scores.correct/total)*100) : 0;
+  document.getElementById('rCorrect').textContent = scores.correct;
+  document.getElementById('rWrong').textContent = scores.wrong;
+  document.getElementById('rPct').textContent = pct + '%';
+  document.getElementById('resultsSub').textContent =
+    `${scores.correct} correctas de ${total} respondidas · ${scores.skip} salteadas`;
+}
+
+function restartDeck() {
+  document.getElementById('progressWrap').style.display = '';
+  switchTab(currentTab);
+}
+
+// Card click to flip (back side)
+document.getElementById('cardArea').addEventListener('click', function(e) {
+  const inner = document.getElementById('cardInner');
+  if(inner.classList.contains('flipped') && answered) {
+    // Optional: don't auto-flip back on click, let user use Next
+  }
+});
+
+// Init
+initDeck('vf');
+initDeck('mc');
+initDeck('ex');
+renderCard();
+</script>
+</body>
+</html>
